@@ -1,0 +1,4 @@
+data/afdc_qc_dcfc.json
+data/.overpass_cache.json
+.DS_Store
+__pycache__/

@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="fr-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulateur Défi 500 km</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f5f7; --panel:#ffffff; --ink:#14161a; --muted:#5d6470; --line:#e2e5ea; --soft:#eef0f3;
+  --accent:#e0b400; --accent-ink:#1a1500; --brand:#ffd500;
+  --ok:#1f8a4c; --ok-bg:#e6f5ec; --warn:#b26b00; --warn-bg:#fff4e0; --bad:#c0352b; --bad-bg:#fdecea;
+  --c-aero:#3b6fd8; --c-roll:#8a5cd0; --c-climb:#7a8699; --c-hvac:#d9542b; --c-aux:#c9a300; --c-batt:#2a9d8f;
+  --soc:#1f8a4c; --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0f1114; --panel:#181b20; --ink:#eef0f3; --muted:#9aa3b0; --line:#2a2f37; --soft:#20242b;
+  --ok:#4cc27e; --ok-bg:#15301f; --warn:#f0a83a; --warn-bg:#33270f; --bad:#ff6b5e; --bad-bg:#3a1714;
+  --c-aero:#6f9bff; --c-roll:#b08cf0; --c-climb:#9aa6b8; --c-hvac:#ff7a50; --c-aux:#ffd500; --c-batt:#4cc2b4; --soc:#4cc27e;
+  --shadow:none; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0f1114; --panel:#181b20; --ink:#eef0f3; --muted:#9aa3b0; --line:#2a2f37; --soft:#20242b;
+  --ok:#4cc27e; --ok-bg:#15301f; --warn:#f0a83a; --warn-bg:#33270f; --bad:#ff6b5e; --bad-bg:#3a1714;
+  --c-aero:#6f9bff; --c-roll:#b08cf0; --c-climb:#9aa6b8; --c-hvac:#ff7a50; --c-aux:#ffd500; --c-batt:#4cc2b4; --soc:#4cc27e;
+  --shadow:none; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 Inter,system-ui,-apple-system,sans-serif}
+header{display:flex;align-items:center;gap:14px;padding-block:18px;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line);background:var(--panel)}
+.logo{width:40px;height:40px;border-radius:10px;background:var(--brand);display:grid;place-items:center;font-weight:800;color:#111;font-size:20px;flex:none}
+header h1{margin:0;font-size:20px;font-weight:800;letter-spacing:-.01em}
+header .sub{color:var(--muted);font-size:13px}
+header .spacer{flex:1}
+button,.btn{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:8px 12px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button.primary{background:var(--brand);border-color:var(--brand);color:#111;font-weight:700;padding:11px 16px;width:100%;font-size:15px}
+button.primary:disabled{opacity:.6;cursor:wait}
+button.small{padding:4px 8px;font-size:12px}
+main{display:grid;grid-template-columns:380px minmax(0,1fr);gap:20px;padding-block:20px;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px));max-width:1500px;margin:0 auto}
+main>*{min-width:0}
+footer.sources{max-width:1500px;margin:0 auto;padding-block:0 24px;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px))}
+@media (max-width:980px){footer.sources{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}}
+@media (max-width:980px){main{grid-template-columns:minmax(0,1fr);padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}}
+@media (max-width:640px){header{flex-wrap:wrap;padding-block:14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}header .spacer{display:none}.legsplit{grid-template-columns:1fr}.kpi .val{font-size:24px}}
+.blk{position:relative}
+.blk h2{cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px;padding-right:96px}
+.blk h2::before{content:'';width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translate(-2px,-2px);transition:transform .15s;flex:none}
+.blk.collapsed h2::before{transform:rotate(-45deg)}
+.blk h2:hover{color:var(--ink)}
+.blk h2:focus-visible{outline:2px solid var(--brand);outline-offset:3px;border-radius:4px}
+.blk.collapsed.card>:not(h2):not(.mv),.blk.collapsed>.card>:not(h2),.blk.collapsed>.grid2 .card>:not(h2),.blk.collapsed>.kpis{display:none}
+.blk.collapsed h2{margin:0}
+.blk.collapsed>.grid2 .card{margin-bottom:0}
+.kh{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
+.blk[data-k="kpis"].collapsed{margin-bottom:16px}
+.blk>.mv{position:absolute;top:8px;right:8px;z-index:5;display:flex;gap:2px;align-items:center;opacity:0;transition:opacity .15s}
+.blk:hover>.mv,.blk:focus-within>.mv,.blk.dragging>.mv{opacity:1}
+.blk:not(:has(>.card,>.kpis,>.grid2,>#outlook.card,>#nostop.card,>h2))>.mv{display:none}
+.mv button,.mv .grip{all:unset;box-sizing:border-box;width:26px;height:26px;display:grid;place-items:center;border-radius:6px;font-size:11px;color:var(--muted);background:var(--panel);border:1px solid var(--line);cursor:pointer}
+.mv .grip{cursor:grab;font-size:15px;touch-action:none}
+.mv button:hover,.mv .grip:hover{color:var(--ink,inherit);border-color:var(--muted)}
+.mv button:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
+.blk.dragging{opacity:.55}
+.blk.dragging>.card,.blk.card.dragging{outline:2px dashed var(--brand);outline-offset:2px}
+@media (hover:none),(pointer:coarse){.blk>.mv{opacity:1}.mv .grip{display:none}.mv button{width:32px;height:32px;font-size:13px}}
+@media (hover:hover) and (pointer:fine){.mv button{display:none}.blk:hover>.mv button,.blk:focus-within>.mv button{display:grid}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:var(--shadow);margin-bottom:16px}
+.card h2{margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
+label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px;font-weight:500}
+input,select{font:inherit;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.inwrap{position:relative}
+.inwrap input{padding-right:36px}
+.inwrap select{padding-right:56px}
+.inwrap select+.clear{right:24px}
+.pick3{display:grid;grid-template-columns:90px minmax(0,1fr);gap:0 10px}.pick3 .full{grid-column:1/-1}
+.pick3 select{width:100%}
+.clear{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--muted);font-size:20px;line-height:1;padding:4px 8px;border-radius:6px}
+.clear:hover{color:var(--ink);background:var(--soft)}
+.nostop .opt{display:flex;justify-content:space-between;gap:12px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line)}
+.nostop .opt:last-of-type{border-bottom:0}
+.nostop .big{font-size:24px;font-weight:800}
+.nostop .gain{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+.gain.pos{color:var(--ok)} .gain.neg{color:var(--bad)}
+.check{display:flex;align-items:center;gap:8px;margin:10px 0 0;color:var(--ink);font-size:13px}
+.check input{width:auto}
+.hint{font-size:11.5px;color:var(--muted);margin-top:4px}
+details summary{cursor:pointer;color:var(--muted);font-size:12.5px;margin-top:12px}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;flex:1;padding:7px}
+.seg button.on{background:var(--soft);font-weight:700}
+.valid{overflow-wrap:anywhere;border-radius:10px;padding:10px 12px;margin-top:12px;font-size:13px}
+.valid.ok{background:var(--ok-bg);color:var(--ok)}
+.valid.warn{background:var(--warn-bg);color:var(--warn)}
+.valid.bad{background:var(--bad-bg);color:var(--bad)}
+.valid b{color:inherit}
+.valid .specs{color:var(--ink);margin-top:6px;font-size:12px;opacity:.85}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+@media (max-width:1200px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+.kpi .lbl{font-size:12px;color:var(--muted);font-weight:500}
+.kpi .val{font-size:30px;font-weight:800;letter-spacing:-.02em;margin-top:2px;font-variant-numeric:tabular-nums}
+.kpi .val small{font-size:15px;font-weight:600;color:var(--muted);margin-left:3px}
+.kpi .foot{font-size:12px;color:var(--muted);margin-top:2px}
+.kpi.hero{border-color:var(--brand);border-width:2px}
+.delta.neg{color:var(--bad)} .delta.pos{color:var(--ok)}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th{text-align:left;color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:7px 8px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+.tw{overflow-x:auto}
+#map{height:380px;border-radius:10px;border:1px solid var(--line)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:1200px){.grid2{grid-template-columns:1fr}}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.bar{display:flex;height:26px;border-radius:7px;overflow:hidden;gap:2px}
+.bar div{height:100%}
+.empty{color:var(--muted);text-align:center;padding:60px 20px}
+.empty .big{font-size:42px}
+.pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11.5px;background:var(--soft);color:var(--muted);font-weight:600}
+.arrow{display:inline-block;font-size:14px}
+.defi{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:var(--soft);padding:10px;border-radius:8px;white-space:pre-wrap;word-break:break-word}
+.note{font-size:12px;color:var(--muted)}
+.err{background:var(--bad-bg);color:var(--bad);padding:10px 12px;border-radius:8px;margin-top:10px;font-size:13px}
+svg text{fill:var(--muted);font-size:11px;font-family:Inter,system-ui,sans-serif}
+.legsplit{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.leg{background:var(--soft);border-radius:10px;padding:12px}
+.leg .t{font-weight:700;margin-bottom:4px}
+.leg .n{font-size:22px;font-weight:800}
+.ul{margin:0;padding-left:18px;color:var(--muted);font-size:12.5px}
+.ul li{margin:3px 0}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">⚡</div>
+  <div>
+    <h1>Simulateur Défi 500 km</h1>
+    <div class="sub">2600 rue Léger (LaSalle) → A-20 Est sortie 314 (Lévis) → retour · 110 km/h sur l'autoroute</div>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn" id="resetOrder" type="button" hidden title="Remettre les cartes dans leur ordre d'origine">Ordre des cartes par défaut</button>
+  <a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/2600+Rue+L%C3%A9ger,+LaSalle,+QC+H8N+2V9/46.7247128,-71.2780197/2600+Rue+L%C3%A9ger,+LaSalle,+QC+H8N+2V9/">Itinéraire Google Maps ↗</a>
+</header>
+
+<main>
+  <aside data-zone="entrees">
+    <div class="card blk" data-k="vehicule">
+      <h2>1 · Véhicule</h2>
+      <div class="pick3">
+        <div><label for="selYear">Année</label><select id="selYear"></select></div>
+        <div><label for="selMake">Marque</label><select id="selMake" disabled></select></div>
+        <div class="full"><label for="selModel">Modèle (version RNCan)</label>
+          <div class="inwrap"><select id="selModel" disabled></select><button type="button" class="clear" id="clearModel" aria-label="Effacer le véhicule" title="Effacer" hidden>×</button></div></div>
+      </div>
+      <input type="hidden" id="model">
+      <label for="rangeIn">Autonomie RNCan (km)</label>
+      <input id="rangeIn" type="number" min="50" max="1200" placeholder="ex. 463">
+      <div id="valid"></div>
+
+      <div class="row">
+        <div><label for="bat">Batterie utilisable (kWh)</label><input id="bat" type="number" step="0.1"></div>
+        <div><label for="dc">Recharge DC max (kW)</label><input id="dc" type="number" step="1"></div>
+      </div>
+      <div id="dcsrc" class="hint"></div>
+      <label class="check"><input type="checkbox" id="hp"> Thermopompe</label>
+      <label class="check"><input type="checkbox" id="v800"> Architecture 800 V</label>
+      <label class="check"><input type="checkbox" id="winter"> Pneus d'hiver</label>
+      <details>
+        <summary>Paramètres avancés (masse, aérodynamisme, coefficients EPA)</summary>
+        <div class="row">
+          <div><label for="mass">Masse avec occupants (kg)</label><input id="mass" type="number" step="10"></div>
+          <div><label for="cda">CdA (m²)</label><input id="cda" type="number" step="0.01"></div>
+        </div>
+        <div class="hint" id="cdahint">Valeurs typiques de la catégorie RNCan. Le modèle est recalé sur la cote autoroute RNCan, donc un CdA approximatif change surtout la sensibilité au vent et à la vitesse.</div>
+      </details>
+    </div>
+
+    <div class="card blk" data-k="trajet">
+      <h2>2 · Trajet</h2>
+      <div class="row">
+        <div><label for="date">Date de départ</label><input id="date" type="date"></div>
+        <div><label for="time">Heure</label><input id="time" type="time" value="09:00"></div>
+      </div>
+      <div class="row3">
+        <div><label for="speed">Autoroute (km/h)</label><input id="speed" type="number" value="110" step="5"></div>
+        <div><label for="soc0">Départ (%)</label><input id="soc0" type="number" value="100" min="10" max="100"></div>
+        <div><label for="socmax">Charge max (%)</label><input id="socmax" type="number" value="90" min="50" max="100"></div>
+      </div>
+      <div class="row3">
+        <div><label for="resC">Réserve borne (%)</label><input id="resC" type="number" value="10" min="0" max="40"></div>
+        <div><label for="resE">Réserve arrivée (%)</label><input id="resE" type="number" value="10" min="0" max="50"></div>
+        <div><label for="minkw">Bornes ≥ (kW)</label><input id="minkw" type="number" value="50" step="10"></div>
+      </div>
+      <label class="check"><input type="checkbox" id="tesla"> Accès aux Superchargeurs Tesla</label>
+      <label class="check"><input type="checkbox" id="prefnet" checked> Prioriser Circuit électrique, Sprint, Tesla et Couche-Tard</label>
+      <div class="hint">Les autres réseaux ne sont choisis que s'ils font gagner plus de 15 min.</div>
+      <label class="check"><input type="checkbox" id="precond" checked> Préchauffage de la batterie avant recharge</label>
+    </div>
+
+    <div class="card blk" data-k="meteo">
+      <h2>3 · Météo</h2>
+      <div class="seg" id="wxmode"><button data-m="auto" class="on">Prévisions / historique</button><button data-m="manual">Manuelle</button></div>
+      <div id="wxauto" class="hint" style="margin-top:8px">Open-Meteo (modèles GEM d'Environnement Canada, GFS, ECMWF) : température, vent à 10 m, pression, humidité et précipitations à l'heure de passage, en 10 points du trajet. Jusqu'à 16 jours à l'avance, ou une date passée.</div>
+      <div id="wxmanual" style="display:none">
+        <div class="row">
+          <div><label for="mT">Température (°C)</label><input id="mT" type="number" value="-5"></div>
+          <div><label for="mP">Pression (hPa)</label><input id="mP" type="number" value="1013"></div>
+        </div>
+        <div class="row">
+          <div><label for="mWs">Vent (km/h)</label><input id="mWs" type="number" value="20"></div>
+          <div><label for="mWd">Vent venant du</label>
+            <select id="mWd"><option value="0">Nord</option><option value="45">Nord-Est</option><option value="90">Est</option><option value="135">Sud-Est</option><option value="180">Sud</option><option value="225">Sud-Ouest</option><option value="270" selected>Ouest</option><option value="315">Nord-Ouest</option></select></div>
+        </div>
+        <div class="row">
+          <div><label for="mRh">Humidité (%)</label><input id="mRh" type="number" value="75"></div>
+          <div><label for="mPr">Chaussée</label>
+            <select id="mPr"><option value="dry">Sèche</option><option value="wet">Mouillée (pluie)</option><option value="snow">Enneigée / gadoue</option></select></div>
+        </div>
+      </div>
+      <div style="margin-top:14px"><button class="primary" id="run">Simuler le trajet</button></div>
+      <div id="runerr"></div>
+    </div>
+
+  </aside>
+
+  <section id="out" data-zone="resultats">
+    <div class="card empty"><div class="big">🔋</div><p>Entre un véhicule et son autonomie RNCan, puis lance la simulation.</p></div>
+  </section>
+</main>
+
+<footer class="sources">
+  <div class="card note blk" data-k="sources">
+    <h2>Sources</h2>
+    <ul class="ul">
+      <li>Cotes RNCan : <span id="rnsrc"></span> (<a href="#" id="loadcsv">charger un CSV plus récent</a>)<input type="file" id="csvfile" accept=".csv" hidden></li>
+      <li>Itinéraire : OSRM / OpenStreetMap (<span id="rtkm"></span> km), altitudes Open-Meteo</li>
+      <li>Bornes rapides : base officielle RNCan/AFDC (puissance par connecteur), OpenStreetMap et ajouts vérifiés (Recharge Sprint) : <span id="nch"></span> sites à moins de 2,5 km du trajet</li>
+      <li>Résistance à l'avancement : coefficients Road Load (A/B/C) des « Test Car List » de l'EPA, 2012-2026</li>
+      <li>Validation : tableau Défi 500 km de PDM (23 essais : écart moyen de conso +0,4 %, écart absolu moyen 5,2 %)</li>
+    </ul>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="data/rncan.js" charset="utf-8"></script>
+<script src="data/route.js" charset="utf-8"></script>
+<script src="sim.js" charset="utf-8"></script>
+<script src="app.js" charset="utf-8"></script>
+</body>
+</html>
