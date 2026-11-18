@@ -358,7 +358,7 @@
       if (wxMode === 'auto') setTimeout(() => renderOutlook(veh, opts), 60);
     } catch (e) {
       console.error(e); $('runerr').innerHTML = `<div class="err">${e.message}</div>`;
-    } finally { btn.disabled = false; btn.textContent = 'Simuler le trajet'; }
+    } finally { btn.disabled = false; btn.textContent = '▶ Simuler le trajet'; }
   }
 
   // ---------- Rendu ----------
