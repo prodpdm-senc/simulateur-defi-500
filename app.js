@@ -8,12 +8,14 @@
   const Order = (() => {
     const KEY = 'evrm-ordre-cartes-v1', FKEY = 'evrm-cartes-repliees-v1';
     const FOLD_DEFAULT = new Set(['sources', 'hyp', 'nostop']);   // repliées au premier affichage
+    if (matchMedia('(max-width: 640px)').matches) ['energie', 'wx'].forEach(k => FOLD_DEFAULT.add(k));   // téléphone : les longs tableaux aussi
     let folds = {}; try { folds = JSON.parse(localStorage.getItem(FKEY) || '{}') || {}; } catch (e) { folds = {}; }
     const isFolded = k => k in folds ? folds[k] : FOLD_DEFAULT.has(k);
     function setFold(blk, v, save) {
       blk.classList.toggle('collapsed', v);
       blk.querySelectorAll('h2').forEach(h => h.setAttribute('aria-expanded', String(!v)));
       if (save) { folds[blk.dataset.k] = v; try { localStorage.setItem(FKEY, JSON.stringify(folds)); } catch (e) {} moved(); }
+      if (save && !v && blk.dataset.k === 'carte' && map && mapBounds) setTimeout(() => { map.invalidateSize(); map.fitBounds(mapBounds, { padding: [20, 20] }); }, 0);
     }
     document.addEventListener('click', e => {
       const h = e.target.closest('.blk h2'); if (!h || e.target.closest('a,button,input,select')) return;
@@ -88,7 +90,7 @@
     return { apply, reset, syncReset, applyFolds };
   })();
   let RN = window.RNCAN.rows, rnFile = window.RNCAN.file;
-  let selected = null, wxMode = 'auto', map = null, mapLayers = null;
+  let selected = null, wxMode = 'auto', map = null, mapLayers = null, mapBounds = null;
 
   // Puissance de recharge DC observée lors des essais Défi 500 km de PDM (sinon estimation à vérifier)
   const DC_REF = [
@@ -382,6 +384,7 @@
       ['Chauffage / clim', B.hvac, 'var(--c-hvac)'], ['Accessoires', B.aux, 'var(--c-aux)'], ['Batterie froide + préchauffage', B.batt + B.precond, 'var(--c-batt)']];
     const ptot = parts.reduce((a, p) => a + Math.max(0, p[1]), 0);
 
+    const ms = $('msum'); if (ms) ms.textContent = r.feasible ? `${f0(r.rangeHwy)} km · ${hm(r.totalH * 60)} · ${r.stops.length} arrêt${r.stops.length > 1 ? 's' : ''}` : 'trajet impossible';
     out.innerHTML = `
       ${r.feasible ? '' : `<div class="card err"><b>Trajet impossible avec ces réglages.</b> Aucune combinaison de bornes ne permet de boucler le trajet en gardant les réserves demandées. Essaie d'abaisser la puissance minimale des bornes, d'activer les Superchargeurs ou de réduire les réserves.</div>`}
       <div class="blk" data-k="kpis"><h2 class="kh">Résumé</h2><div class="kpis">
@@ -582,7 +585,7 @@
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 18 }).addTo(map);
     const P = ROUTE.points.filter(p => p.leg === 0).map(p => [p.lat, p.lon]);
     const line = L.polyline(P, { color: '#3b6fd8', weight: 4 }).addTo(map);
-    map.fitBounds(line.getBounds(), { padding: [20, 20] });
+    mapBounds = line.getBounds(); map.fitBounds(mapBounds, { padding: [20, 20] });
     const seen = new Set();
     for (const c of ROUTE.chargers) {
       const k = c.lat + ',' + c.lon; if (seen.has(k)) continue; seen.add(k);
@@ -644,7 +647,21 @@
   }
   Order.apply(document.querySelector('aside')); Order.applyFolds(document.querySelector('footer')); Order.syncReset();
   $('resetOrder').onclick = Order.reset;
-  $('run').onclick = run;
+  // Téléphone : deux onglets (Réglages / Résultats) au lieu d'une longue page
+  const mobile = () => matchMedia('(max-width: 640px)').matches;
+  function setView(v) {
+    document.body.classList.toggle('v-in', v === 'in'); document.body.classList.toggle('v-out', v === 'out');
+    document.querySelectorAll('.mtabs button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+    if (mobile()) window.scrollTo({ top: 0, behavior: 'instant' });
+    window.dispatchEvent(new Event('resize'));
+    // une carte Leaflet créée pendant que l'onglet était caché doit être recadrée une fois visible
+    if (v === 'out' && map && mapBounds) setTimeout(() => { map.invalidateSize(); map.fitBounds(mapBounds, { padding: [20, 20] }); }, 0);
+  }
+  document.querySelectorAll('.mtabs button').forEach(b => b.onclick = () => setView(b.dataset.v));
+  setView('in');
+  // textes d'aide sur une ligne au téléphone : toucher pour lire au complet
+  document.addEventListener('click', e => { const h = e.target.closest('.hint, .valid .specs'); if (h && mobile() && !e.target.closest('a,button,input,select')) h.classList.toggle('open'); });
+  $('run').onclick = async () => { await run(); if (mobile() && !$('runerr').textContent) setView('out'); };
   // exemple au premier affichage (remplacé dès qu'on entre un autre véhicule)
   if (!$('model').value) {
     const ex = RN.find(r => label(r) === '2025 Hyundai IONIQ 5 Long Range AWD (19" Wheels)') || RN[0];
