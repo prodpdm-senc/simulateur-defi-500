@@ -197,7 +197,7 @@ svg text{fill:var(--muted);font-size:11px;font-family:Inter,system-ui,sans-serif
   <aside data-zone="entrees">
     <div class="runbar"><button class="primary" id="run">▶ Simuler le trajet</button><div id="runerr"></div></div>
     <div class="card blk" data-k="vehicule">
-      <h2>1 · Véhicule</h2>
+      <h2><span><span class="num">1</span> · Véhicule</span></h2>
       <div class="pick3">
         <div><label for="selYear">Année</label><select id="selYear"></select></div>
         <div><label for="selMake">Marque</label><select id="selMake" disabled></select></div>
@@ -228,7 +228,7 @@ svg text{fill:var(--muted);font-size:11px;font-family:Inter,system-ui,sans-serif
     </div>
 
     <div class="card blk" data-k="trajet">
-      <h2>2 · Trajet</h2>
+      <h2><span><span class="num">2</span> · Trajet</span></h2>
       <div class="row">
         <div><label for="date">Date de départ</label><input id="date" type="date"></div>
         <div><label for="time">Heure</label><input id="time" type="time" value="09:00"></div>
@@ -250,7 +250,7 @@ svg text{fill:var(--muted);font-size:11px;font-family:Inter,system-ui,sans-serif
     </div>
 
     <div class="card blk" data-k="meteo">
-      <h2>3 · Météo</h2>
+      <h2><span><span class="num">3</span> · Météo</span></h2>
       <div class="seg" id="wxmode"><button data-m="auto" class="on">Prévisions / historique</button><button data-m="manual">Manuelle</button></div>
       <div id="wxauto" class="hint" style="margin-top:8px">Open-Meteo (modèles GEM d'Environnement Canada, GFS, ECMWF) : température, vent à 10 m, pression, humidité et précipitations à l'heure de passage, en 10 points du trajet. Jusqu'à 16 jours à l'avance, ou une date passée.</div>
       <div id="wxmanual" style="display:none">
@@ -296,6 +296,6 @@ svg text{fill:var(--muted);font-size:11px;font-family:Inter,system-ui,sans-serif
 <script src="data/rncan.js?v=9f7e429e" charset="utf-8"></script>
 <script src="data/route.js?v=617bb417" charset="utf-8"></script>
 <script src="sim.js?v=10bbe8f0" charset="utf-8"></script>
-<script src="app.js?v=da6158bd" charset="utf-8"></script>
+<script src="app.js?v=2992c1c0" charset="utf-8"></script>
 </body>
 </html>

@@ -38,7 +38,9 @@
       syncReset();
     }
     function syncReset() { const b = $('resetOrder'); if (b) b.hidden = !Object.keys(saved).length; }
-    function moved() { window.dispatchEvent(new Event('resize')); }   // carte Leaflet et graphique se recalent
+    // étapes numérotées dans l'ordre affiché (1 · Véhicule, 2 · Trajet, 3 · Météo par défaut)
+    function renumber() { const z = document.querySelector('[data-zone="entrees"]'); if (z) blocks(z).forEach((b, i) => { const n = b.querySelector('h2 .num'); if (n) n.textContent = i + 1; }); }
+    function moved() { renumber(); window.dispatchEvent(new Event('resize')); }   // carte Leaflet et graphique se recalent
     function controls(blk) {
       if (blk.querySelector(':scope > .mv')) return;
       const d = document.createElement('div'); d.className = 'mv';
@@ -76,7 +78,7 @@
       const first = bl[0] ? bl[0].previousElementSibling : null;
       let anchor = first;
       want.filter(k => byK[k]).forEach(k => { const b = byK[k]; if (anchor) anchor.after(b); else zone.prepend(b); anchor = b; });
-      bl.forEach(controls); bl.forEach(b => setFold(b, isFolded(b.dataset.k), false)); enableDrop(zone);
+      bl.forEach(controls); bl.forEach(b => setFold(b, isFolded(b.dataset.k), false)); enableDrop(zone); renumber();
     }
     function reset() {
       saved = {}; try { localStorage.removeItem(KEY); } catch (e) {}
